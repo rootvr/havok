@@ -4,3 +4,15 @@ members = [
     "havok-repl",
     "havok-discord",
 ]
+
+[profile.dev]
+opt-level = 0
+
+[profile.release]
+opt-level = 3
+
+[workspace.package]
+authors = [
+    "Valentino Di Giosaffatte (resu)",
+    "Riccardo Armando Di Prinzio (ricdip)"
+]
