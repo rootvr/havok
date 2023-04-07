@@ -5,3 +5,5 @@ edition = "2021"
 authors.workspace = true
 
 [dependencies]
+rustyline = "11.0.0"
+rustyline-derive = "0.8.0"
