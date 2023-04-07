@@ -1,0 +1,6 @@
+[workspace]
+members = [
+    "havok-lib",
+    "havok-repl",
+    "havok-discord",
+]
