@@ -1,3 +1,5 @@
+use colored::Colorize;
+use havok_lib::solver::Solver;
 use rustyline::completion::Completer;
 use rustyline::completion::FilenameCompleter;
 use rustyline::completion::Pair;
@@ -20,6 +22,8 @@ use rustyline_derive::Helper;
 use std::borrow::Cow;
 use std::borrow::Cow::Borrowed;
 use std::borrow::Cow::Owned;
+use termimad::crossterm::style::Color;
+use termimad::MadSkin;
 
 #[derive(Helper)]
 struct HavokReplHelper {
@@ -69,7 +73,7 @@ impl Highlighter for HavokReplHelper {
     }
 
     fn highlight_hint<'h>(&self, hint: &'h str) -> Cow<'h, str> {
-        Owned("\x1b[1m".to_owned() + hint + "\x1b[m")
+        Owned(hint.dimmed().to_string())
     }
 
     fn highlight_char(&self, line: &str, pos: usize) -> bool {
@@ -103,32 +107,40 @@ fn main() -> Result<()> {
         hinter: HistoryHinter {},
         colored: "".to_owned(),
     };
+    let mut skin = MadSkin::default();
+    skin.bold.set_fg(Color::Yellow);
+    skin.inline_code.set_fg(Color::Magenta);
     let mut rline = Editor::with_config(config)?;
     rline.set_helper(Some(helper));
     if rline.load_history(HISTORY_FILE).is_err() {
-        eprintln!("repl: warn: no previous history");
+        eprintln!("{}", "repl: warn: no previous history".bold().yellow());
     }
-    let mut count = 1;
+    let mut count = 1u64;
     loop {
         let prompt = format!("repl:{}> ", count);
         rline.helper_mut().expect("repl: panic: no helper").colored =
-            format!("\x1b[1;32m{}\x1b[0m", prompt);
+            prompt.bold().green().to_string();
         let readline = rline.readline(&prompt);
         match readline {
             Ok(line) => {
                 rline.add_history_entry(line.as_str())?;
-                println!("repl: query: `{}`", line);
+                if !line.is_empty() {
+                    match Solver::new(line.as_str().trim()).unwrap().solve() {
+                        Ok(result) => println!("{}", skin.inline(&format!("{}", result).magenta())),
+                        Err(error) => eprintln!("{}", format!("{}", error).bold().red()),
+                    }
+                }
             }
             Err(ReadlineError::Interrupted) => {
-                eprintln!("repl: signal: CTRL-C");
+                eprintln!("{}", "repl: signal: CTRL-C".bold().yellow());
                 break;
             }
             Err(ReadlineError::Eof) => {
-                eprintln!("repl: signal: CTRL-D");
+                eprintln!("{}", "repl: signal: CTRL-D".bold().yellow());
                 break;
             }
             Err(error) => {
-                eprintln!("repl: error: `{:?}`", error);
+                eprintln!("{}", format!("repl: error: `{:?}`", error).bold().red());
                 break;
             }
         }

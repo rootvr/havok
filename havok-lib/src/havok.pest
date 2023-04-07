@@ -1,0 +1,42 @@
+WHITESPACE = _{ " " | " " }
+
+op = _{ add | sub | mul | div }
+add = { "+" }
+sub = { "-" }
+mul = { "*" }
+div = { "/" }
+
+number = @{ ASCII_DIGIT+ }
+integer = { ("+" | "-")? ~ number }
+
+fraction = @{ "." ~ ASCII_DIGIT{1,2}}
+float = @{ ("+" | "-")? ~ ASCII_DIGIT+ ~ fraction }
+
+roll = { "d" | "D" }
+nb_dice = @{ ASCII_NONZERO_DIGIT+ ~ ASCII_DIGIT* }
+fudge = { "F" | "f" }
+dice_side = _{ number | fudge }
+explode = { "e" ~ number }
+i_explode = { ("ie" | "!") ~ number? }
+reroll = { "r" ~ number }
+i_reroll = { "ir" ~ number }
+keep_hi = { "K" ~ number }
+keep_lo = { "k" ~ number }
+drop_hi = { "D" ~ number }
+drop_lo = { "d" ~ number }
+option = _{ explode | i_explode | reroll | i_reroll | keep_hi | keep_lo | drop_hi | drop_lo }
+number_list = _{ number ~ ("," ~ number)* }
+target_enum = { "[" ~ number_list ~ "]"}
+target =  { "t" ~ (number | target_enum) }
+double_target = { "tt" ~ number }
+failure =  { "f" ~ number }
+target_failure = _{ target | double_target | failure }
+dice = { nb_dice? ~ (roll ~ dice_side) ~ option* ~ target_failure{, 3} }
+
+leaf = _{ dice |  float | integer | block_expr }
+block_expr = { "(" ~ expr ~ ")" }
+expr = { leaf ~ (op ~ leaf)* }
+sort = { "#" }
+repeated_expr = { "(" ~ expr ~ ")" ~ "^" ~ (add | sort)? ~ number }
+reason = { ":" ~ ANY* }
+command = _{ SOI ~ (repeated_expr | expr) ~ reason? ~ EOI }
