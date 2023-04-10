@@ -10,6 +10,13 @@ tracing-subscriber = "0.3.16"
 tracing-unwrap = "0.10.0"
 dotenv = "0.15.0"
 
+[dependencies.clap]
+version = "4.2.1"
+features = [
+    "derive",
+    "cargo"
+] 
+
 [dependencies.tokio]
 version = "1.27.0"
 features = [
@@ -26,3 +33,6 @@ features = [
     "standard_framework",
     "rustls_backend"
 ]
+
+[dependencies.havok-lib]
+path = "../havok-lib"
