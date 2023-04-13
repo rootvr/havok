@@ -1,5 +1,3 @@
-#![allow(unused)]
-
 /// Keep an integer or floating point constant
 #[derive(Debug, Clone)]
 pub enum Constant {
@@ -11,7 +9,7 @@ impl Constant {
     pub fn get_value(&self) -> i64 {
         match *self {
             Constant::Integer(n) => n,
-            Constant::Float(n) => n as i64, // TODO(resu) FIXME why cast
+            Constant::Float(n) => n as i64,
         }
     }
 }

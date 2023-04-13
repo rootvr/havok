@@ -18,6 +18,7 @@ async fn quit(ctx: &Context, msg: &Message) -> CommandResult {
     let data = ctx.data.read().await;
     if let Some(shard_manager) = data.get::<ShardManagerContainer>() {
         send_msg(ctx, msg, "**info** *shutting down*").await?;
+        // TODO(resu): persist aliases
         shard_manager.lock().await.shutdown_all().await;
     } else {
         send_msg(ctx, msg, "**error** *while getting shard manager*").await?;

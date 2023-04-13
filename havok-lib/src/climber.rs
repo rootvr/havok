@@ -1,5 +1,3 @@
-#![allow(unused)]
-
 use crate::parser;
 use once_cell::sync::Lazy;
 use pest::iterators::Pair;

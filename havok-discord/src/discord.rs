@@ -1,10 +1,9 @@
 mod command;
 mod handler;
 
-use command::*;
+use self::command::alias::AliasContainer;
+use self::command::alias::All;
 use handler::*;
-use havok_lib::error::Error::Other;
-use havok_lib::error::Error::Pest;
 use serenity::client::bridge::gateway::ShardManager;
 use serenity::framework::standard::StandardFramework;
 use serenity::http::Http;
@@ -14,9 +13,14 @@ use serenity::prelude::GatewayIntents;
 use serenity::prelude::Mutex;
 use serenity::prelude::TypeMapKey;
 use serenity::Client;
+use serenity::FutureExt;
 use std::collections::HashSet;
 use std::env;
 use std::sync::Arc;
+use tokio::signal::unix::signal;
+use tokio::signal::unix::SignalKind;
+use tracing::warn;
+use tracing_unwrap::OptionExt;
 use tracing_unwrap::ResultExt;
 
 // TODO(resu): Make this dynamic
@@ -31,13 +35,6 @@ impl TypeMapKey for ShardManagerContainer {
 #[inline]
 pub async fn send_msg(ctx: &Context, msg: &Message, txt: &str) -> Result<Message, serenity::Error> {
     msg.reply_ping(ctx, txt).await
-}
-
-pub fn err_msg(err: havok_lib::error::Error) -> String {
-    match err {
-        Pest(_) => format!("**error**\n```{}\n```", err),
-        Other(err) => format!("**error** *{}*", err),
-    }
 }
 
 pub async fn run() {
@@ -59,9 +56,10 @@ pub async fn run() {
 
     let framework = StandardFramework::new()
         .configure(|c| c.owners(owners).prefix(PREFIX_SIGIL))
-        .group(&meta::META_GROUP)
-        .group(&owner::OWNER_GROUP)
-        .group(&havok::HAVOK_GROUP);
+        .group(&command::meta::META_GROUP)
+        .group(&command::owner::OWNER_GROUP)
+        .group(&command::havok::HAVOK_GROUP)
+        .group(&command::alias::ALIAS_GROUP);
 
     let intents = GatewayIntents::non_privileged()
         | GatewayIntents::GUILD_MESSAGES
@@ -77,16 +75,47 @@ pub async fn run() {
     {
         let mut data = client.data.write().await;
         data.insert::<ShardManagerContainer>(client.shard_manager.clone());
+        data.insert::<AliasContainer>(All::new());
     }
+
+    let data = client.data.clone();
 
     let shard_manager = client.shard_manager.clone();
 
-    tokio::spawn(async move {
+    let handle_client = async {
+        client.start().await.expect_or_log("Client error");
+    };
+
+    let handle_ctrlc = async {
         tokio::signal::ctrl_c()
             .await
-            .expect_or_log("Could not register Ctrl+C handler");
+            .expect_or_log("Could not register `Ctrl+C` handler");
+        warn!("Received `Ctrl-C`, shutting down...");
+        let data = data.read().await;
+        let _ = data.get::<AliasContainer>().unwrap_or_log();
+        // TODO(resu): persist aliases
         shard_manager.lock().await.shutdown_all().await;
-    });
+    };
 
-    client.start().await.expect_or_log("Client error");
+    #[cfg(unix)]
+    let handle_sigterm = async {
+        signal(SignalKind::terminate())
+            .expect_or_log("Could not register `SIGTERM` handler")
+            .recv()
+            .await;
+        warn!("Received `SIGTERM`, shutting down...");
+        let data = data.read().await;
+        let _ = data.get::<AliasContainer>().unwrap_or_log();
+        // TODO(resu): persist aliases
+        shard_manager.lock().await.shutdown_all().await;
+    };
+
+    let all_futures = vec![
+        #[cfg(unix)]
+        handle_sigterm.boxed(),
+        handle_client.boxed(),
+        handle_ctrlc.boxed(),
+    ];
+
+    futures::future::select_all(all_futures).await;
 }
