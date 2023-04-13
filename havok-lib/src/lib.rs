@@ -1,10 +1,10 @@
 mod climber;
 mod constant;
 mod dice;
-mod error;
+pub mod error;
 mod evaluator;
 mod parser;
-mod roll;
+pub mod roll;
 pub mod solver;
 
 #[cfg(test)]
