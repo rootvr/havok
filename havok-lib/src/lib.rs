@@ -1,6 +1,6 @@
 mod climber;
 mod constant;
-mod dice;
+pub mod dice;
 pub mod error;
 mod evaluator;
 mod parser;

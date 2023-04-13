@@ -1,5 +1,5 @@
-pub(crate) mod history;
-pub(crate) mod kind;
+pub mod history;
+pub mod kind;
 
 /// Keep the roll expression type
 #[derive(Debug, Clone)]

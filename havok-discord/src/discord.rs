@@ -1,12 +1,10 @@
+mod command;
 mod handler;
-mod havok;
-mod meta;
-mod owner;
 
+use command::*;
 use handler::*;
-use havok::*;
-use meta::*;
-use owner::*;
+use havok_lib::error::Error::Other;
+use havok_lib::error::Error::Pest;
 use serenity::client::bridge::gateway::ShardManager;
 use serenity::framework::standard::StandardFramework;
 use serenity::http::Http;
@@ -21,6 +19,9 @@ use std::env;
 use std::sync::Arc;
 use tracing_unwrap::ResultExt;
 
+// TODO(resu): Make this dynamic
+const PREFIX_SIGIL: &str = "!";
+
 pub struct ShardManagerContainer;
 
 impl TypeMapKey for ShardManagerContainer {
@@ -28,8 +29,15 @@ impl TypeMapKey for ShardManagerContainer {
 }
 
 #[inline]
-pub async fn send(ctx: &Context, msg: &Message, txt: &str) -> Result<Message, serenity::Error> {
+pub async fn send_msg(ctx: &Context, msg: &Message, txt: &str) -> Result<Message, serenity::Error> {
     msg.reply_ping(ctx, txt).await
+}
+
+pub fn err_msg(err: havok_lib::error::Error) -> String {
+    match err {
+        Pest(_) => format!("**error**\n```{}\n```", err),
+        Other(err) => format!("**error** *{}*", err),
+    }
 }
 
 pub async fn run() {
@@ -50,12 +58,13 @@ pub async fn run() {
         .expect_or_log("Could not access app info");
 
     let framework = StandardFramework::new()
-        .configure(|c| c.owners(owners).prefix("!"))
-        .group(&META_GROUP)
-        .group(&OWNER_GROUP)
-        .group(&HAVOK_GROUP);
+        .configure(|c| c.owners(owners).prefix(PREFIX_SIGIL))
+        .group(&meta::META_GROUP)
+        .group(&owner::OWNER_GROUP)
+        .group(&havok::HAVOK_GROUP);
 
-    let intents = GatewayIntents::GUILD_MESSAGES
+    let intents = GatewayIntents::non_privileged()
+        | GatewayIntents::GUILD_MESSAGES
         | GatewayIntents::DIRECT_MESSAGES
         | GatewayIntents::MESSAGE_CONTENT;
 

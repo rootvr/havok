@@ -1,4 +1,4 @@
-use super::send;
+use crate::discord::send_msg;
 use serenity::framework::standard::macros::command;
 use serenity::framework::standard::macros::group;
 use serenity::framework::standard::CommandResult;
@@ -13,6 +13,6 @@ struct Meta;
 #[command]
 async fn ping(ctx: &Context, msg: &Message) -> CommandResult {
     info!("Received `{:?}`", msg.content);
-    send(ctx, msg, "pong").await?;
+    send_msg(ctx, msg, "**info** *pong*").await?;
     Ok(())
 }
