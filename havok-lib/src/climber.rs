@@ -32,5 +32,4 @@ pub static C: Lazy<Climber> = Lazy::new(|| {
             .op(Op::infix(parser::Rule::mul, Assoc::Left))
             .op(Op::infix(parser::Rule::div, Assoc::Left)),
     }
-    .into()
 });

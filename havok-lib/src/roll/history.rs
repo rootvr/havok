@@ -32,7 +32,7 @@ impl std::fmt::Display for History {
                     })
                     .format(", ")
             )?,
-            History::Constant(v) => write!(f, "{}", v.to_string())?,
+            History::Constant(v) => write!(f, "{v}")?,
             History::Operator(o) => write!(f, "{o}")?,
             History::OpenParen => write!(f, "(")?,
             History::CloseParen => write!(f, ")")?,

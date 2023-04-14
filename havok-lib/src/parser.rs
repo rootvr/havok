@@ -9,7 +9,8 @@ pub struct Parser;
 
 impl Parser {
     pub fn extract_dice(expr: &mut Pairs<Rule>) -> Option<String> {
-        while let Some(inner) = expr.next() {
+        // while let Some(inner) = expr.next() {
+        for inner in expr.by_ref() {
             match inner.as_rule() {
                 Rule::expr | Rule::block_expr => {
                     return Self::extract_dice(&mut inner.into_inner())
