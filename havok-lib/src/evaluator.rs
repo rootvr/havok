@@ -239,7 +239,7 @@ impl Evaluator {
                 let n = maybe_nb.as_str().parse::<u64>().unwrap();
                 if n > limits::MAX_DICE_AMOUNT {
                     return Err(format!(
-                        "Exceed maximum allowed number of dices ({})",
+                        "exceeded max allowed amount of dices `{}`",
                         limits::MAX_DICE_AMOUNT
                     )
                     .into());
@@ -256,9 +256,13 @@ impl Evaluator {
             _ => unreachable!("{:?}", pair),
         };
         if sides == 0 {
-            return Err("Dice can't have 0 sides".into());
+            return Err("invalid `0` sides dice provided".into());
         } else if sides > limits::MAX_DICE_SIDES {
-            return Err(format!("Dice can't have more than {}", limits::MAX_DICE_SIDES).into());
+            return Err(format!(
+                "exceeded max allowed number of dice sides `{}`",
+                limits::MAX_DICE_SIDES
+            )
+            .into());
         }
         let mut res = Self::roll(nb, sides, source);
         let mut modifier = dice::Modifier::None(Rule::expr);

@@ -1,41 +1,31 @@
-mod command;
 mod handler;
+use handler::Handler;
 
-use self::command::alias::AliasContainer;
-use self::command::alias::All;
-use handler::*;
-use serenity::client::bridge::gateway::ShardManager;
+pub mod map;
+use map::ShardManagerMap;
+
+pub mod utils;
+use utils::PREFIX_SIGIL;
+
+use crate::command::alias::map::AliasMap;
+use crate::command::alias::model::AliasContainer;
+use crate::command::alias::ALIAS_GROUP;
+use crate::command::meta::META_GROUP;
+use crate::command::roll::map::RollMap;
+use crate::command::roll::ROLL_GROUP;
 use serenity::framework::standard::StandardFramework;
 use serenity::http::Http;
-use serenity::model::prelude::Message;
-use serenity::prelude::Context;
 use serenity::prelude::GatewayIntents;
-use serenity::prelude::Mutex;
-use serenity::prelude::TypeMapKey;
 use serenity::Client;
 use serenity::FutureExt;
+use std::collections::HashMap;
 use std::collections::HashSet;
 use std::env;
-use std::sync::Arc;
 use tokio::signal::unix::signal;
 use tokio::signal::unix::SignalKind;
 use tracing::warn;
 use tracing_unwrap::OptionExt;
 use tracing_unwrap::ResultExt;
-
-// TODO(resu): Make this dynamic
-const PREFIX_SIGIL: &str = "!";
-
-pub struct ShardManagerContainer;
-
-impl TypeMapKey for ShardManagerContainer {
-    type Value = Arc<Mutex<ShardManager>>;
-}
-
-#[inline]
-pub async fn send_msg(ctx: &Context, msg: &Message, txt: &str) -> Result<Message, serenity::Error> {
-    msg.reply_ping(ctx, txt).await
-}
 
 pub async fn run() {
     dotenv::dotenv().expect_or_log("No `.env` file");
@@ -55,11 +45,10 @@ pub async fn run() {
         .expect_or_log("Could not access app info");
 
     let framework = StandardFramework::new()
-        .configure(|c| c.owners(owners).prefix(PREFIX_SIGIL))
-        .group(&command::meta::META_GROUP)
-        .group(&command::owner::OWNER_GROUP)
-        .group(&command::havok::HAVOK_GROUP)
-        .group(&command::alias::ALIAS_GROUP);
+        .configure(|config| config.owners(owners).prefix(PREFIX_SIGIL))
+        .group(&META_GROUP)
+        .group(&ROLL_GROUP)
+        .group(&ALIAS_GROUP);
 
     let intents = GatewayIntents::non_privileged()
         | GatewayIntents::GUILD_MESSAGES
@@ -74,8 +63,9 @@ pub async fn run() {
 
     {
         let mut data = client.data.write().await;
-        data.insert::<ShardManagerContainer>(client.shard_manager.clone());
-        data.insert::<AliasContainer>(All::new());
+        data.insert::<ShardManagerMap>(client.shard_manager.clone());
+        data.insert::<AliasMap>(AliasContainer::new());
+        data.insert::<RollMap>(HashMap::new());
     }
 
     let data = client.data.clone();
@@ -92,7 +82,7 @@ pub async fn run() {
             .expect_or_log("Could not register `Ctrl+C` handler");
         warn!("Received `Ctrl-C`, shutting down...");
         let data = data.read().await;
-        let _ = data.get::<AliasContainer>().unwrap_or_log();
+        let _ = data.get::<AliasMap>().unwrap_or_log();
         // TODO(resu): persist aliases
         shard_manager.lock().await.shutdown_all().await;
     };
@@ -105,17 +95,17 @@ pub async fn run() {
             .await;
         warn!("Received `SIGTERM`, shutting down...");
         let data = data.read().await;
-        let _ = data.get::<AliasContainer>().unwrap_or_log();
+        let _ = data.get::<AliasMap>().unwrap_or_log();
         // TODO(resu): persist aliases
         shard_manager.lock().await.shutdown_all().await;
     };
 
-    let all_futures = vec![
+    let handlers = vec![
         #[cfg(unix)]
         handle_sigterm.boxed(),
         handle_client.boxed(),
         handle_ctrlc.boxed(),
     ];
 
-    futures::future::select_all(all_futures).await;
+    futures::future::select_all(handlers).await;
 }

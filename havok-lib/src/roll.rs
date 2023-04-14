@@ -67,7 +67,7 @@ impl std::fmt::Display for Result {
             Kind::Single(single) => {
                 write!(f, "{}", single.to_string(true))?;
                 if let Some(reason) = &self.reason {
-                    write!(f, ", reason: `{}`", reason)?;
+                    write!(f, " *reason* `{}`", reason)?;
                 }
             }
             Kind::Multi(multi) => match multi.get_total() {
@@ -75,9 +75,9 @@ impl std::fmt::Display for Result {
                     (*multi)
                         .iter()
                         .try_for_each(|result| writeln!(f, "`{}`", result.to_string_history()))?;
-                    write!(f, "sum: **{}**", total)?;
+                    write!(f, "*total* **{}**", total)?;
                     if let Some(reason) = &self.reason {
-                        write!(f, ", reason: `{}`", reason)?;
+                        write!(f, " *reason* `{}`", reason)?;
                     }
                 }
                 None => {
@@ -85,7 +85,7 @@ impl std::fmt::Display for Result {
                         .iter()
                         .try_for_each(|result| writeln!(f, "{}", result.to_string(true)))?;
                     if let Some(reason) = &self.reason {
-                        write!(f, "reason: `{}`", reason)?;
+                        write!(f, "*reason* `{}`", reason)?;
                     }
                 }
             },

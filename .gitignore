@@ -1,4 +1,13 @@
+# [cargo]
+# build dir
 /target
+
+# [havok-repl]
+# history file
 history
+
+# [havok-discord]
+# dotenv file
 .env
+# storage dir for aliases
 .havok

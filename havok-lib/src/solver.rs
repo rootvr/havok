@@ -32,7 +32,7 @@ impl Solver {
     /// Solve the roll expression using the default Rng source
     pub fn solve(&self) -> Result<roll::Result> {
         self.solve_with(&mut rand::thread_rng())
-        // self.roll_with(&mut rand::rngs::StdRng::from_entropy())
+        // self.solve_with(&mut rand::rngs::OsRng)
     }
 
     /// Solve the roll expression using the provided Rng source

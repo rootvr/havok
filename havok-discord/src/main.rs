@@ -1,8 +1,9 @@
+mod cli;
+mod command;
+mod discord;
+
 use clap::Parser;
 use tracing::Level;
-
-mod cli;
-mod discord;
 
 #[tokio::main]
 #[tracing::instrument]

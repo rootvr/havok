@@ -1,10 +1,11 @@
-use super::command::alias::AliasContainer;
+use crate::command::alias::map::AliasMap;
 use serenity::async_trait;
 use serenity::model::event::ResumedEvent;
 use serenity::model::gateway::Ready;
 use serenity::model::prelude::GuildId;
 use serenity::prelude::Context;
 use serenity::prelude::EventHandler;
+use tracing::debug;
 use tracing::error;
 use tracing::info;
 use tracing_unwrap::OptionExt;
@@ -20,7 +21,7 @@ impl EventHandler for Handler {
             if guild_id != GuildId(0) {
                 {
                     let mut data = ctx.data.write().await;
-                    let all = data.get_mut::<AliasContainer>().unwrap_or_log();
+                    let all = data.get_mut::<AliasMap>().unwrap_or_log();
                     if let Err(why) = all.load_alias_data(*guild_id.as_u64()) {
                         error!("Error loading aliases `{}`", why)
                     }
@@ -30,6 +31,6 @@ impl EventHandler for Handler {
     }
 
     async fn resume(&self, _: Context, _: ResumedEvent) {
-        info!("Resumed");
+        debug!("Resumed");
     }
 }
