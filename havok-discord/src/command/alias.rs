@@ -15,57 +15,70 @@ use serenity::framework::standard::Args;
 use serenity::framework::standard::CommandResult;
 use serenity::model::channel::Message;
 use serenity::prelude::Context;
-use tracing::debug;
 use tracing_unwrap::OptionExt;
 use tracing_unwrap::ResultExt;
 
 #[group]
 #[prefix = "alias"]
 #[description = "Alias management group"]
-#[commands(list_alias, set_user_alias, save_alias, load_alias)]
+#[commands(list, save, load, set, del, clear, setg, delg, clearg)]
 struct Alias;
 
 #[command]
-#[aliases("ls", "list")]
-#[min_args(0)]
-async fn list_alias(ctx: &Context, msg: &Message) -> CommandResult {
-    debug!("Received `{:?}`", msg.content);
-    let send = {
+async fn list(ctx: &Context, msg: &Message) -> CommandResult {
+    let to_send = {
         let data = ctx.data.read().await;
-        let all = data.get::<AliasMap>().unwrap_or_log();
-        let (user_aliases, global_aliases) =
-            all.list_alias(get_chat_id(msg), *msg.author.id.as_u64());
+        let alias_map = data.get::<AliasMap>().unwrap_or_log();
+        let (user_defs, global_defs) =
+            alias_map.list_alias(get_chat_id(msg), *msg.author.id.as_u64());
         let name = get_user_name(ctx, msg).await;
         format!(
-            "**aliases**\n**global** *aliases*:\n{}\n\n**{}**'s *aliases*:\n{}",
-            if !global_aliases.is_empty() {
-                global_aliases.iter().format("\n").to_string()
-            } else {
-                "*empty*".to_owned()
-            },
-            name,
-            if !user_aliases.is_empty() {
-                user_aliases.iter().format("\n").to_string()
-            } else {
-                "*empty*".to_owned()
-            }
+            "**aliases**\n{}{}",
+            global_defs
+                .iter()
+                .map(|s| format!("*global* {}\n", s))
+                .format(""),
+            user_defs
+                .iter()
+                .map(|s| format!("*{}* {}\n", name, s))
+                .format("")
         )
     };
-    send_reply(ctx, msg, &send).await?;
+    send_reply(ctx, msg, &to_send).await?;
     Ok(())
 }
 
 #[command]
-#[aliases("su", "set")]
+async fn save(ctx: &Context, msg: &Message) -> CommandResult {
+    let to_send = {
+        let data = ctx.data.read().await;
+        let alias_map = data.get::<AliasMap>().unwrap_or_log();
+        alias_map.save_alias_data(get_chat_id(msg))?
+    };
+    send_reply(ctx, msg, to_send).await?;
+    Ok(())
+}
+
+#[command]
+async fn load(ctx: &Context, msg: &Message) -> CommandResult {
+    let to_send = {
+        let mut data = ctx.data.write().await;
+        let alias_map = data.get_mut::<AliasMap>().unwrap_or_log();
+        alias_map.load_alias_data(get_chat_id(msg))?
+    };
+    send_reply(ctx, msg, to_send).await?;
+    Ok(())
+}
+
+#[command]
 #[min_args(2)]
-async fn set_user_alias(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
-    debug!("Received `{:?}`", msg.content);
-    let send = {
+async fn set(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
+    let to_send = {
         let alias = args.single::<String>().unwrap_or_log();
         let command = args.rest().to_string();
         let mut data = ctx.data.write().await;
-        let all = data.get_mut::<AliasMap>().unwrap_or_log();
-        all.set_user_alias(
+        let alias_map = data.get_mut::<AliasMap>().unwrap_or_log();
+        alias_map.set_user_alias(
             alias,
             command,
             get_chat_id(msg),
@@ -73,34 +86,67 @@ async fn set_user_alias(ctx: &Context, msg: &Message, mut args: Args) -> Command
             &get_user_name(ctx, msg).await,
         )
     };
-    send_reply(ctx, msg, &send).await?;
+    send_reply(ctx, msg, &to_send).await?;
     Ok(())
 }
 
 #[command]
-#[aliases("sv", "save")]
-#[max_args(0)]
-async fn save_alias(ctx: &Context, msg: &Message, _args: Args) -> CommandResult {
-    debug!("Received `{:?}`", msg.content);
-    let send = {
-        let data = ctx.data.read().await;
-        let all = data.get::<AliasMap>().unwrap_or_log();
-        all.save_alias_data(get_chat_id(msg))?
-    };
-    send_reply(ctx, msg, send).await?;
-    Ok(())
-}
-
-#[command]
-#[aliases("ld", "load")]
-#[max_args(0)]
-async fn load_alias(ctx: &Context, msg: &Message, _args: Args) -> CommandResult {
-    debug!("Received `{:?}`", msg.content);
-    let send = {
+#[min_args(1)]
+async fn del(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
+    let to_send = {
+        let alias = args.single::<String>().unwrap_or_log();
         let mut data = ctx.data.write().await;
-        let all = data.get_mut::<AliasMap>().unwrap_or_log();
-        all.load_alias_data(get_chat_id(msg))?
+        let alias_map = data.get_mut::<AliasMap>().unwrap_or_log();
+        alias_map.del_user_alias(&alias, get_chat_id(msg), *msg.author.id.as_u64())
     };
-    send_reply(ctx, msg, send).await?;
+    send_reply(ctx, msg, &to_send).await?;
+    Ok(())
+}
+
+#[command]
+async fn clear(ctx: &Context, msg: &Message) -> CommandResult {
+    let to_send = {
+        let mut data = ctx.data.write().await;
+        let alias_map = data.get_mut::<AliasMap>().unwrap_or_log();
+        alias_map.clear_user_aliases(get_chat_id(msg), *msg.author.id.as_u64())
+    };
+    send_reply(ctx, msg, to_send).await?;
+    Ok(())
+}
+
+#[command]
+#[min_args(2)]
+async fn setg(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
+    let to_send = {
+        let alias = args.single::<String>().unwrap_or_log();
+        let command = args.rest().to_string();
+        let mut data = ctx.data.write().await;
+        let alias_map = data.get_mut::<AliasMap>().unwrap_or_log();
+        alias_map.set_global_alias(alias, command, get_chat_id(msg))
+    };
+    send_reply(ctx, msg, &to_send).await?;
+    Ok(())
+}
+
+#[command]
+#[min_args(1)]
+async fn delg(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
+    let to_send = {
+        let mut data = ctx.data.write().await;
+        let alias_map = data.get_mut::<AliasMap>().unwrap();
+        alias_map.del_global_alias(args.rest(), get_chat_id(msg))
+    };
+    send_reply(ctx, msg, &to_send).await?;
+    Ok(())
+}
+
+#[command]
+async fn clearg(ctx: &Context, msg: &Message) -> CommandResult {
+    let to_send = {
+        let mut data = ctx.data.write().await;
+        let alias_map = data.get_mut::<AliasMap>().unwrap();
+        alias_map.clear_aliases(get_chat_id(msg))
+    };
+    send_reply(ctx, msg, to_send).await?;
     Ok(())
 }

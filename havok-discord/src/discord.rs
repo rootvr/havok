@@ -7,6 +7,13 @@ use map::ShardManagerMap;
 pub mod utils;
 use utils::PREFIX_SIGIL;
 
+pub mod help;
+use help::after;
+use help::before;
+use help::dispatch_error;
+use help::unknown_command;
+use help::MY_HELP;
+
 use crate::command::alias::map::AliasMap;
 use crate::command::alias::model::AliasContainer;
 use crate::command::alias::ALIAS_GROUP;
@@ -34,18 +41,38 @@ pub async fn run() {
 
     let http = Http::new(&token);
 
-    let (owners, _bot_id) = http
-        .get_current_application_info()
-        .await
-        .map(|info| {
-            let mut owners = HashSet::new();
-            owners.insert(info.owner.id);
-            (owners, info.id)
-        })
-        .expect_or_log("Could not access app info");
+    let (owners, bot_id) = {
+        let info = http
+            .get_current_application_info()
+            .await
+            .expect_or_log("Could not access app info");
+        let mut owners = HashSet::new();
+        owners.insert(if let Some(team) = info.team {
+            team.owner_user_id
+        } else {
+            info.owner.id
+        });
+        let bot = http
+            .get_current_user()
+            .await
+            .expect_or_log("Could not access bot id");
+        (owners, bot.id)
+    };
 
     let framework = StandardFramework::new()
-        .configure(|config| config.owners(owners).prefix(PREFIX_SIGIL))
+        .configure(|config| {
+            config
+                .with_whitespace(true)
+                .on_mention(Some(bot_id))
+                .prefix(PREFIX_SIGIL)
+                .delimiters(vec![" "])
+                .owners(owners)
+        })
+        .before(before)
+        .after(after)
+        .unrecognised_command(unknown_command)
+        .on_dispatch_error(dispatch_error)
+        .help(&MY_HELP)
         .group(&META_GROUP)
         .group(&ROLL_GROUP)
         .group(&ALIAS_GROUP);
@@ -82,8 +109,8 @@ pub async fn run() {
             .expect_or_log("Could not register `Ctrl+C` handler");
         warn!("Received `Ctrl-C`, shutting down...");
         let data = data.read().await;
-        let _ = data.get::<AliasMap>().unwrap_or_log();
-        // TODO(resu): persist aliases
+        let all = data.get::<AliasMap>().unwrap_or_log();
+        all.save_all();
         shard_manager.lock().await.shutdown_all().await;
     };
 
@@ -95,8 +122,8 @@ pub async fn run() {
             .await;
         warn!("Received `SIGTERM`, shutting down...");
         let data = data.read().await;
-        let _ = data.get::<AliasMap>().unwrap_or_log();
-        // TODO(resu): persist aliases
+        let all = data.get::<AliasMap>().unwrap_or_log();
+        all.save_all();
         shard_manager.lock().await.shutdown_all().await;
     };
 

@@ -6,9 +6,9 @@ use serenity::model::prelude::GuildId;
 use serenity::prelude::Context;
 use serenity::prelude::EventHandler;
 use tracing::debug;
-use tracing::error;
 use tracing::info;
 use tracing_unwrap::OptionExt;
+use tracing_unwrap::ResultExt;
 
 pub struct Handler;
 
@@ -22,9 +22,8 @@ impl EventHandler for Handler {
                 {
                     let mut data = ctx.data.write().await;
                     let all = data.get_mut::<AliasMap>().unwrap_or_log();
-                    if let Err(why) = all.load_alias_data(*guild_id.as_u64()) {
-                        error!("Error loading aliases `{}`", why)
-                    }
+                    all.load_alias_data(*guild_id.as_u64())
+                        .expect_or_log("Error loading aliases `{}`");
                 }
             }
         }

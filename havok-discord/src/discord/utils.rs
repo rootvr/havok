@@ -1,8 +1,7 @@
 use serenity::model::prelude::Message;
 use serenity::prelude::Context;
 
-// TODO(resu): Make this dynamic
-pub const PREFIX_SIGIL: &str = "!";
+pub const PREFIX_SIGIL: &str = "/";
 
 pub fn get_chat_id(msg: &Message) -> u64 {
     match msg.guild_id {

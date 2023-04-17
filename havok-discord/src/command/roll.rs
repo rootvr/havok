@@ -16,7 +16,6 @@ use serenity::framework::standard::Args;
 use serenity::framework::standard::CommandResult;
 use serenity::model::channel::Message;
 use serenity::prelude::Context;
-use tracing::debug;
 use tracing_unwrap::OptionExt;
 
 #[group]
@@ -28,7 +27,6 @@ struct Roll;
 #[aliases("r")]
 #[min_args(1)]
 async fn roll(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
-    debug!("Received `{:?}`", msg.content);
     let (to_send, critics) = parse_args(ctx, msg, args).await;
     let sent = send_reply(ctx, msg, &to_send).await?;
     react_to_critic(ctx, &sent, critics).await?;
@@ -37,8 +35,7 @@ async fn roll(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
 
 #[command]
 #[aliases("rr")]
-async fn reroll(ctx: &Context, msg: &Message, _args: Args) -> CommandResult {
-    debug!("Received `{:?}`", msg.content);
+async fn reroll(ctx: &Context, msg: &Message) -> CommandResult {
     let (to_send, critics) = {
         let solver = {
             let mut data = ctx.data.write().await;

@@ -56,7 +56,7 @@ pub async fn parse_args(
         Err(error) => return (error, None),
     };
     let alias = if has_alias {
-        Cow::Owned(format!("*alias* `{}`\n", input))
+        Cow::Owned(format!("*alias* `{}`", input))
     } else {
         Cow::Borrowed("")
     };
