@@ -8,7 +8,7 @@ use utils::react_to_critic;
 use utils::search_critics;
 use utils::solve;
 
-use super::alias::get_user_name;
+use crate::discord::utils::get_user_name;
 use crate::discord::utils::send_reply;
 use serenity::framework::standard::macros::command;
 use serenity::framework::standard::macros::group;

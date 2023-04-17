@@ -1,5 +1,5 @@
 use super::map::RollMap;
-use crate::command::alias::parse_alias;
+use crate::command::alias::utils::parse_alias;
 use havok_lib::dice::Critic;
 use havok_lib::error::Error;
 use havok_lib::roll;

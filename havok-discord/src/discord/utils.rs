@@ -4,6 +4,24 @@ use serenity::prelude::Context;
 // TODO(resu): Make this dynamic
 pub const PREFIX_SIGIL: &str = "!";
 
+pub fn get_chat_id(msg: &Message) -> u64 {
+    match msg.guild_id {
+        Some(id) => *id.as_u64(),
+        None => *msg.channel_id.as_u64(),
+    }
+}
+
+pub async fn get_user_name(ctx: &Context, msg: &Message) -> String {
+    match msg.guild_id {
+        Some(id) => msg
+            .author
+            .nick_in(ctx, id)
+            .await
+            .unwrap_or_else(|| msg.author.name.to_owned()),
+        None => msg.author.name.to_owned(),
+    }
+}
+
 #[inline]
 pub async fn send_reply(
     ctx: &Context,

@@ -3,6 +3,10 @@ use map::AliasMap;
 
 pub mod model;
 
+pub mod utils;
+
+use crate::discord::utils::get_chat_id;
+use crate::discord::utils::get_user_name;
 use crate::discord::utils::send_reply;
 use itertools::Itertools;
 use serenity::framework::standard::macros::command;
@@ -14,35 +18,6 @@ use serenity::prelude::Context;
 use tracing::debug;
 use tracing_unwrap::OptionExt;
 use tracing_unwrap::ResultExt;
-
-fn get_chat_id(msg: &Message) -> u64 {
-    match msg.guild_id {
-        Some(id) => *id.as_u64(),
-        None => *msg.channel_id.as_u64(),
-    }
-}
-
-pub async fn get_user_name(ctx: &Context, msg: &Message) -> String {
-    match msg.guild_id {
-        Some(id) => msg
-            .author
-            .nick_in(ctx, id)
-            .await
-            .unwrap_or_else(|| msg.author.name.to_owned()),
-        None => msg.author.name.to_owned(),
-    }
-}
-
-pub async fn parse_alias(
-    ctx: &Context,
-    _msg: &Message,
-    args: Args,
-) -> Result<(String, bool), String> {
-    let data = ctx.data.read().await;
-    let _ /*all*/ = data.get::<AliasMap>().unwrap_or_log();
-    // all.expand_alias(args.rest(), get_chat_id(msg), *msg.author.id.as_u64(), true)
-    Ok((args.rest().to_string(), false))
-}
 
 #[group]
 #[prefix = "alias"]
