@@ -18,12 +18,12 @@ use std::borrow::Cow::Borrowed;
 use std::borrow::Cow::Owned;
 
 #[derive(Helper)]
-pub struct ReplHelper {
-    pub completer: FilenameCompleter,
-    pub highlighter: MatchingBracketHighlighter,
-    pub _validator: MatchingBracketValidator,
-    pub hinter: HistoryHinter,
-    pub colored: String,
+pub(crate) struct ReplHelper {
+    pub(crate) completer: FilenameCompleter,
+    pub(crate) highlighter: MatchingBracketHighlighter,
+    pub(crate) _validator: MatchingBracketValidator,
+    pub(crate) hinter: HistoryHinter,
+    pub(crate) colored: String,
 }
 
 impl Completer for ReplHelper {

@@ -1,9 +1,9 @@
-pub mod map;
+pub(crate) mod map;
 use map::AliasMap;
 
-pub mod model;
+pub(crate) mod model;
 
-pub mod utils;
+pub(crate) mod utils;
 
 use crate::discord::utils::get_chat_id;
 use crate::discord::utils::get_user_name;

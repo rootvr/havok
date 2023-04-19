@@ -1,16 +1,16 @@
 use serenity::model::prelude::Message;
 use serenity::prelude::Context;
 
-pub const PREFIX_SIGIL: &str = "/";
+pub(crate) const PREFIX_SIGIL: &str = "/";
 
-pub fn get_chat_id(msg: &Message) -> u64 {
+pub(crate) fn get_chat_id(msg: &Message) -> u64 {
     match msg.guild_id {
         Some(id) => *id.as_u64(),
         None => *msg.channel_id.as_u64(),
     }
 }
 
-pub async fn get_user_name(ctx: &Context, msg: &Message) -> String {
+pub(crate) async fn get_user_name(ctx: &Context, msg: &Message) -> String {
     match msg.guild_id {
         Some(id) => msg
             .author
@@ -22,7 +22,7 @@ pub async fn get_user_name(ctx: &Context, msg: &Message) -> String {
 }
 
 #[inline]
-pub async fn send_reply(
+pub(crate) async fn send_reply(
     ctx: &Context,
     msg: &Message,
     reply: &str,

@@ -26,7 +26,7 @@ fn format_havok_error(error: Error) -> String {
     }
 }
 
-pub async fn react_to_critic(
+pub(crate) async fn react_to_critic(
     ctx: &Context,
     msg: &Message,
     critics: Option<HashSet<Critic>>,
@@ -44,7 +44,7 @@ pub async fn react_to_critic(
     Ok(())
 }
 
-pub async fn parse_args(
+pub(crate) async fn parse_args(
     ctx: &Context,
     msg: &Message,
     args: Args,
@@ -77,7 +77,11 @@ async fn solve_expr(ctx: &Context, msg: &Message, input: &str) -> Result<roll::R
     solve(ctx, msg, Solver::new(input).unwrap_or_log()).await
 }
 
-pub async fn solve(ctx: &Context, msg: &Message, solver: Solver) -> Result<roll::Result, String> {
+pub(crate) async fn solve(
+    ctx: &Context,
+    msg: &Message,
+    solver: Solver,
+) -> Result<roll::Result, String> {
     match solver.solve() {
         Ok(result) => {
             {
@@ -92,7 +96,7 @@ pub async fn solve(ctx: &Context, msg: &Message, solver: Solver) -> Result<roll:
     }
 }
 
-pub fn search_critics(result: &roll::Result) -> Result<HashSet<Critic>, serenity::Error> {
+pub(crate) fn search_critics(result: &roll::Result) -> Result<HashSet<Critic>, serenity::Error> {
     let mut critics = HashSet::new();
     match result.get_result() {
         roll::Kind::Single(result) => {
@@ -140,7 +144,9 @@ fn search_critic(
     }
 }
 
-pub fn check_critics(critics: Result<HashSet<Critic>, serenity::Error>) -> Option<HashSet<Critic>> {
+pub(crate) fn check_critics(
+    critics: Result<HashSet<Critic>, serenity::Error>,
+) -> Option<HashSet<Critic>> {
     match critics {
         Ok(critics) => {
             if !critics.is_empty() {

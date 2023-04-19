@@ -1,3 +1,5 @@
+use super::utils::collect_expanded;
+use super::utils::split_command;
 use itertools::Itertools;
 use serde::Deserialize;
 use serde::Serialize;
@@ -11,19 +13,16 @@ use std::path::PathBuf;
 use tracing::info;
 use tracing_unwrap::ResultExt;
 
-use super::utils::collect_expanded;
-use super::utils::split_command;
-
 const ALIAS_DIR: &str = ".havok";
 
-pub struct AliasContainer(HashMap<u64, AliasData>);
+pub(crate) struct AliasContainer(HashMap<u64, AliasData>);
 
 impl AliasContainer {
-    pub fn new() -> Self {
+    pub(crate) fn new() -> Self {
         Self(HashMap::new())
     }
 
-    pub fn expand_alias(
+    pub(crate) fn expand_alias(
         &self,
         command: &str,
         chat_id: u64,
@@ -247,7 +246,7 @@ impl AliasContainer {
         }
     }
 
-    pub fn list_alias(&self, chat_id: u64, user_id: u64) -> (Vec<String>, Vec<String>) {
+    pub(crate) fn list_alias(&self, chat_id: u64, user_id: u64) -> (Vec<String>, Vec<String>) {
         match self.get(&chat_id) {
             Some(data) => (
                 match data.user_defs.get(&user_id) {
@@ -266,7 +265,7 @@ impl AliasContainer {
         }
     }
 
-    pub fn load_alias_data(&mut self, chat_id: u64) -> std::io::Result<&'static str> {
+    pub(crate) fn load_alias_data(&mut self, chat_id: u64) -> std::io::Result<&'static str> {
         let mut path = PathBuf::from(ALIAS_DIR);
         if path.exists() {
             path.push(format!("{}.ron", chat_id));
@@ -282,7 +281,7 @@ impl AliasContainer {
         Ok("**info** *config loaded*")
     }
 
-    pub fn save_alias_data(&self, chat_id: u64) -> std::io::Result<&'static str> {
+    pub(crate) fn save_alias_data(&self, chat_id: u64) -> std::io::Result<&'static str> {
         let send = match self.get(&chat_id) {
             Some(data) => {
                 let ser = ron::ser::to_string_pretty(&data, Default::default()).unwrap_or_log();
@@ -297,7 +296,7 @@ impl AliasContainer {
         Ok(send)
     }
 
-    pub fn set_user_alias(
+    pub(crate) fn set_user_alias(
         &mut self,
         alias: String,
         command: String,
@@ -322,7 +321,7 @@ impl AliasContainer {
         }
     }
 
-    pub fn del_user_alias(&mut self, alias: &str, chat_id: u64, user_id: u64) -> String {
+    pub(crate) fn del_user_alias(&mut self, alias: &str, chat_id: u64, user_id: u64) -> String {
         let alias = alias
             .trim_matches(|c: char| c == '$' || c.is_whitespace())
             .to_lowercase();
@@ -336,7 +335,7 @@ impl AliasContainer {
         }
     }
 
-    pub fn clear_user_aliases(&mut self, chat_id: u64, user_id: u64) -> &'static str {
+    pub(crate) fn clear_user_aliases(&mut self, chat_id: u64, user_id: u64) -> &'static str {
         let data = self.entry(chat_id).or_insert_with(AliasData::new);
         match data.user_defs.get_mut(&user_id) {
             Some(user_defs) => {
@@ -347,7 +346,12 @@ impl AliasContainer {
         }
     }
 
-    pub fn set_global_alias(&mut self, alias: String, command: String, chat_id: u64) -> String {
+    pub(crate) fn set_global_alias(
+        &mut self,
+        alias: String,
+        command: String,
+        chat_id: u64,
+    ) -> String {
         let alias = alias.trim_matches(|c: char| c == '$' || c.is_whitespace());
         match self.expand_global_alias(&command, chat_id, false) {
             Ok(_) => {
@@ -361,7 +365,7 @@ impl AliasContainer {
         }
     }
 
-    pub fn del_global_alias(&mut self, alias: &str, chat_id: u64) -> String {
+    pub(crate) fn del_global_alias(&mut self, alias: &str, chat_id: u64) -> String {
         let alias = alias
             .trim_matches(|c: char| c == '$' || c.is_whitespace())
             .to_uppercase();
@@ -370,14 +374,14 @@ impl AliasContainer {
         format!("**info** *global alias* `${}` *deleted*", alias)
     }
 
-    pub fn clear_aliases(&mut self, chat_id: u64) -> &'static str {
+    pub(crate) fn clear_aliases(&mut self, chat_id: u64) -> &'static str {
         if let Some(data) = self.get_mut(&chat_id) {
             data.global_defs.clear();
         }
         "**info** *aliases cleared*"
     }
 
-    pub fn save_all(&self) {
+    pub(crate) fn save_all(&self) {
         let keys: Vec<_> = { self.keys().cloned().collect() };
         for chat_id in keys {
             if let Some(data) = self.get(&chat_id) {
@@ -407,9 +411,9 @@ impl DerefMut for AliasContainer {
 }
 
 #[derive(Serialize, Deserialize)]
-pub struct AliasData {
-    pub global_defs: HashMap<String, String>,
-    pub user_defs: HashMap<u64, HashMap<String, String>>,
+pub(crate) struct AliasData {
+    pub(crate) global_defs: HashMap<String, String>,
+    pub(crate) user_defs: HashMap<u64, HashMap<String, String>>,
 }
 
 impl AliasData {
@@ -422,9 +426,9 @@ impl AliasData {
 }
 
 #[derive(Debug, PartialEq, Eq)]
-pub struct AliasEntry {
-    pub name: String,
-    pub args: Vec<String>,
+pub(crate) struct AliasEntry {
+    pub(crate) name: String,
+    pub(crate) args: Vec<String>,
 }
 
 impl std::fmt::Display for AliasEntry {
@@ -438,7 +442,7 @@ impl std::fmt::Display for AliasEntry {
 }
 
 #[derive(Debug, PartialEq, Eq)]
-pub enum Chunk {
+pub(crate) enum Chunk {
     Alias(AliasEntry),
     Expr(String),
     Comment(String),
@@ -446,7 +450,7 @@ pub enum Chunk {
 }
 
 impl Chunk {
-    pub fn is_empty(&self) -> bool {
+    pub(crate) fn is_empty(&self) -> bool {
         match self {
             Chunk::Alias(a) => a.name.is_empty(),
             Chunk::Expr(e) => e.is_empty(),

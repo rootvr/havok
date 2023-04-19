@@ -34,13 +34,13 @@ async fn my_help(
 }
 
 #[hook]
-pub async fn before(_ctx: &Context, msg: &Message, command: &str) -> bool {
+pub(crate) async fn before(_ctx: &Context, msg: &Message, command: &str) -> bool {
     info!("Got command `{}` by user `{}`", command, msg.author.name);
     true
 }
 
 #[hook]
-pub async fn after(_ctx: &Context, _msg: &Message, command: &str, result: CommandResult) {
+pub(crate) async fn after(_ctx: &Context, _msg: &Message, command: &str, result: CommandResult) {
     match result {
         Ok(()) => info!("Processed command `{}`", command),
         Err(why) => error!("Command `{}` returned error `{:?}`", command, why),
@@ -48,17 +48,25 @@ pub async fn after(_ctx: &Context, _msg: &Message, command: &str, result: Comman
 }
 
 #[hook]
-pub async fn unknown_command(_ctx: &Context, _msg: &Message, unknown: &str) {
+pub(crate) async fn unknown_command(_ctx: &Context, _msg: &Message, unknown: &str) {
     warn!("Could not find command named `{}`", unknown);
 }
 
 #[hook]
-pub async fn dispatch_error(ctx: &Context, msg: &Message, error: DispatchError, _command: &str) {
+pub(crate) async fn dispatch_error(
+    ctx: &Context,
+    msg: &Message,
+    error: DispatchError,
+    _command: &str,
+) {
     if let DispatchError::Ratelimited(info) = error {
         if info.is_first_try {
             let _ = msg
                 .channel_id
-                .say(&ctx.http, &format!("**info** *try again after {}s*", info.as_secs()))
+                .say(
+                    &ctx.http,
+                    &format!("**info** *try again after {}s*", info.as_secs()),
+                )
                 .await;
         }
     }

@@ -1,13 +1,12 @@
-use crate::discord::utils::get_chat_id;
-
 use super::model::{AliasEntry, Chunk};
 use super::AliasMap;
+use crate::discord::utils::get_chat_id;
 use serenity::framework::standard::Args;
 use serenity::model::channel::Message;
 use serenity::prelude::Context;
 use tracing_unwrap::OptionExt;
 
-pub async fn parse_alias(
+pub(crate) async fn parse_alias(
     ctx: &Context,
     msg: &Message,
     args: Args,
@@ -17,7 +16,7 @@ pub async fn parse_alias(
     all.expand_alias(args.rest(), get_chat_id(msg), *msg.author.id.as_u64(), true)
 }
 
-pub fn split_command(mut command: &str) -> Result<Vec<Chunk>, String> {
+pub(crate) fn split_command(mut command: &str) -> Result<Vec<Chunk>, String> {
     let mut chunks = Vec::new();
     let comment = command.find(':').map(|comment_start| {
         let comment = command[comment_start..].to_string();
@@ -74,7 +73,7 @@ fn split_alias_args(command: &str) -> Result<AliasEntry, String> {
     }
 }
 
-pub fn collect_expanded(mut expanded: Vec<Chunk>) -> Result<String, String> {
+pub(crate) fn collect_expanded(mut expanded: Vec<Chunk>) -> Result<String, String> {
     let mut had_error = false;
     expanded.sort();
     let string = expanded

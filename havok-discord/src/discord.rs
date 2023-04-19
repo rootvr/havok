@@ -1,13 +1,13 @@
 mod handler;
 use handler::Handler;
 
-pub mod map;
+pub(crate) mod map;
 use map::ShardManagerMap;
 
-pub mod utils;
+pub(crate) mod utils;
 use utils::PREFIX_SIGIL;
 
-pub mod help;
+pub(crate) mod help;
 use help::after;
 use help::before;
 use help::dispatch_error;
@@ -34,7 +34,7 @@ use tracing::warn;
 use tracing_unwrap::OptionExt;
 use tracing_unwrap::ResultExt;
 
-pub async fn run() {
+pub(crate) async fn run() {
     dotenv::dotenv().expect_or_log("No `.env` file");
 
     let token = env::var("DISCORD_TOKEN").expect_or_log("Env var `DISCORD_TOKEN`");

@@ -10,7 +10,7 @@ use tracing::info;
 use tracing_unwrap::OptionExt;
 use tracing_unwrap::ResultExt;
 
-pub struct Handler;
+pub(crate) struct Handler;
 
 #[async_trait]
 impl EventHandler for Handler {

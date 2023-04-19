@@ -1,7 +1,7 @@
-pub mod map;
+pub(crate) mod map;
 use map::RollMap;
 
-pub mod utils;
+pub(crate) mod utils;
 use utils::check_critics;
 use utils::parse_args;
 use utils::react_to_critic;
