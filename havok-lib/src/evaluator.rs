@@ -10,73 +10,73 @@ use pest::iterators::Pairs;
 
 mod limits {
     /// Arbitrary limits to avoid oom
-    pub const MAX_DICE_AMOUNT: u64 = 5000;
-    pub const MAX_DICE_SIDES: u64 = 5000;
+    pub(crate) const MAX_DICE_AMOUNT: u64 = 5000;
+    pub(crate) const MAX_DICE_SIDES: u64 = 5000;
 }
 
 /// Represent an evaluator
-pub struct Evaluator;
+pub(crate) struct Evaluator;
 
 impl Evaluator {
     fn eval_explode<S: roll::Source>(
-        rolls: &mut kind::Single,
+        single: &mut kind::Single,
         sides: u64,
         results: Vec<dice::Result>,
-        option: Pair<Rule>,
+        pair: Pair<Rule>,
         prior: &dice::Modifier,
         source: &mut S,
     ) -> (dice::Modifier, Vec<dice::Result>) {
-        let value = Parser::extract_modifier_value(option).unwrap_or(sides);
-        let nb = results.iter().filter(|x| x.value >= value).count() as u64;
+        let value = Parser::extract_modifier_value(pair).unwrap_or(sides);
+        let amount = results.iter().filter(|x| x.value >= value).count() as u64;
         if prior != &dice::Modifier::None(Rule::explode)
             && prior != &dice::Modifier::None(Rule::i_explode)
         {
-            rolls.add_history(results.clone(), false);
+            single.add_history(results.clone(), false);
         }
-        let res = if nb > 0 {
-            let res = Self::roll(nb, sides, source);
-            rolls.add_history(res.clone(), false);
-            res
+        let result = if amount > 0 {
+            let result = Self::roll(amount, sides, source);
+            single.add_history(result.clone(), false);
+            result
         } else {
             results
         };
-        (dice::Modifier::None(Rule::explode), res)
+        (dice::Modifier::None(Rule::explode), result)
     }
 
     fn eval_indef_explode<S: roll::Source>(
-        rolls: &mut kind::Single,
+        single: &mut kind::Single,
         sides: u64,
         results: Vec<dice::Result>,
-        option: Pair<Rule>,
+        pair: Pair<Rule>,
         prior: &dice::Modifier,
         source: &mut S,
     ) -> (dice::Modifier, Vec<dice::Result>) {
-        let value = Parser::extract_modifier_value(option).unwrap_or(sides);
+        let value = Parser::extract_modifier_value(pair).unwrap_or(sides);
         if prior != &dice::Modifier::None(Rule::explode)
             && prior != &dice::Modifier::None(Rule::i_explode)
         {
-            rolls.add_history(results.clone(), false);
+            single.add_history(results.clone(), false);
         }
-        let mut nb = results.into_iter().filter(|x| x.value >= value).count() as u64;
-        let mut res = Vec::new();
-        while nb > 0 {
-            res = Self::roll(nb, sides, source);
-            nb = res.iter().filter(|x| x.value >= value).count() as u64;
-            rolls.add_history(res.clone(), false);
+        let mut amount = results.into_iter().filter(|x| x.value >= value).count() as u64;
+        let mut results = Vec::new();
+        while amount > 0 {
+            results = Self::roll(amount, sides, source);
+            amount = results.iter().filter(|x| x.value >= value).count() as u64;
+            single.add_history(results.clone(), false);
         }
-        (dice::Modifier::None(Rule::i_explode), res)
+        (dice::Modifier::None(Rule::i_explode), results)
     }
 
     fn eval_reroll<S: roll::Source>(
-        rolls: &mut kind::Single,
+        single: &mut kind::Single,
         sides: u64,
         results: Vec<dice::Result>,
-        option: Pair<Rule>,
+        pair: Pair<Rule>,
         source: &mut S,
     ) -> (dice::Modifier, Vec<dice::Result>) {
-        let value = Parser::extract_modifier_value(option).unwrap();
+        let value = Parser::extract_modifier_value(pair).unwrap();
         let mut has_rerolled = false;
-        let res: Vec<dice::Result> = results
+        let results: Vec<dice::Result> = results
             .into_iter()
             .map(|x| {
                 if x.value <= value {
@@ -88,21 +88,21 @@ impl Evaluator {
             })
             .collect();
         if has_rerolled {
-            rolls.add_history(res.clone(), false);
+            single.add_history(results.clone(), false);
         }
-        (dice::Modifier::None(Rule::reroll), res)
+        (dice::Modifier::None(Rule::reroll), results)
     }
 
     fn eval_indef_reroll<S: roll::Source>(
-        rolls: &mut kind::Single,
+        single: &mut kind::Single,
         sides: u64,
         results: Vec<dice::Result>,
-        option: Pair<Rule>,
+        pair: Pair<Rule>,
         source: &mut S,
     ) -> (dice::Modifier, Vec<dice::Result>) {
-        let value = Parser::extract_modifier_value(option).unwrap();
+        let value = Parser::extract_modifier_value(pair).unwrap();
         let mut has_rerolled = false;
-        let res: Vec<dice::Result> = results
+        let result: Vec<dice::Result> = results
             .into_iter()
             .map(|x| {
                 let mut x = x;
@@ -114,95 +114,92 @@ impl Evaluator {
             })
             .collect();
         if has_rerolled {
-            rolls.add_history(res.clone(), false);
+            single.add_history(result.clone(), false);
         }
-        (dice::Modifier::None(Rule::i_reroll), res)
+        (dice::Modifier::None(Rule::i_reroll), result)
     }
 
     fn eval_modifier<S: roll::Source>(
-        rolls: &mut kind::Single,
+        single: &mut kind::Single,
         sides: u64,
         results: Vec<dice::Result>,
-        option: Pair<Rule>,
+        pair: Pair<Rule>,
         source: &mut S,
         prev: &dice::Modifier,
     ) -> Result<dice::modifier::Result> {
-        let (modifier, mut res) = match &option.as_rule() {
-            Rule::explode => Self::eval_explode(rolls, sides, results, option, prev, source),
-            Rule::i_explode => {
-                Self::eval_indef_explode(rolls, sides, results, option, prev, source)
-            }
-            Rule::reroll => Self::eval_reroll(rolls, sides, results, option, source),
-            Rule::i_reroll => Self::eval_indef_reroll(rolls, sides, results, option, source),
+        let (modifier, mut results) = match &pair.as_rule() {
+            Rule::explode => Self::eval_explode(single, sides, results, pair, prev, source),
+            Rule::i_explode => Self::eval_indef_explode(single, sides, results, pair, prev, source),
+            Rule::reroll => Self::eval_reroll(single, sides, results, pair, source),
+            Rule::i_reroll => Self::eval_indef_reroll(single, sides, results, pair, source),
             Rule::keep_hi => {
-                let value = Parser::extract_modifier_value(option).unwrap();
-                if rolls.get_history().is_empty() {
-                    rolls.add_history(results.clone(), false);
+                let value = Parser::extract_modifier_value(pair).unwrap();
+                if single.get_history().is_empty() {
+                    single.add_history(results.clone(), false);
                 }
                 (dice::Modifier::KeepHigh(value as usize), results)
             }
             Rule::keep_lo => {
-                let value = Parser::extract_modifier_value(option).unwrap();
-                if rolls.get_history().is_empty() {
-                    rolls.add_history(results.clone(), false);
+                let value = Parser::extract_modifier_value(pair).unwrap();
+                if single.get_history().is_empty() {
+                    single.add_history(results.clone(), false);
                 }
                 (dice::Modifier::KeepLow(value as usize), results)
             }
             Rule::drop_hi => {
-                let value = Parser::extract_modifier_value(option).unwrap();
-                if rolls.get_history().is_empty() {
-                    rolls.add_history(results.clone(), false);
+                let value = Parser::extract_modifier_value(pair).unwrap();
+                if single.get_history().is_empty() {
+                    single.add_history(results.clone(), false);
                 }
                 (dice::Modifier::DropHigh(value as usize), results)
             }
             Rule::drop_lo => {
-                let value = Parser::extract_modifier_value(option).unwrap();
-                if rolls.get_history().is_empty() {
-                    rolls.add_history(results.clone(), false);
+                let value = Parser::extract_modifier_value(pair).unwrap();
+                if single.get_history().is_empty() {
+                    single.add_history(results.clone(), false);
                 }
                 (dice::Modifier::DropLow(value as usize), results)
             }
             Rule::target => {
-                let value_or_enum = option.into_inner().next().unwrap();
-                match value_or_enum.as_rule() {
+                let target = pair.into_inner().next().unwrap();
+                match target.as_rule() {
                     Rule::number => (
                         dice::Modifier::TargetDoubleFailure(
-                            value_or_enum.as_str().parse::<u64>().unwrap(),
+                            target.as_str().parse::<u64>().unwrap(),
                             0,
                             0,
                         ),
                         results,
                     ),
                     Rule::target_enum => {
-                        let numbers_list = value_or_enum.into_inner();
-                        let numbers_list: Vec<_> = numbers_list
-                            .map(|p| p.as_str().parse::<u64>().unwrap())
-                            .collect();
-                        (dice::Modifier::TargetEnum(numbers_list), results)
+                        let values = target.into_inner();
+                        let values: Vec<_> =
+                            values.map(|p| p.as_str().parse::<u64>().unwrap()).collect();
+                        (dice::Modifier::TargetEnum(values), results)
                     }
                     _ => unreachable!(),
                 }
             }
             Rule::double_target => {
-                let value = Parser::extract_modifier_value(option).unwrap();
+                let value = Parser::extract_modifier_value(pair).unwrap();
                 (dice::Modifier::TargetDoubleFailure(0, 0, value), results)
             }
             Rule::failure => {
-                let value = Parser::extract_modifier_value(option).unwrap();
+                let value = Parser::extract_modifier_value(pair).unwrap();
                 (dice::Modifier::TargetDoubleFailure(0, value, 0), results)
             }
-            _ => unreachable!("{:#?}", option),
+            _ => unreachable!("{:#?}", pair),
         };
-        let n = match modifier {
+        let number = match modifier {
             dice::Modifier::KeepHigh(n) | dice::Modifier::KeepLow(n) => {
-                if n > res.len() {
-                    res.len()
+                if n > results.len() {
+                    results.len()
                 } else {
                     n
                 }
             }
             dice::Modifier::DropHigh(n) | dice::Modifier::DropLow(n) => {
-                if n > res.len() {
+                if n > results.len() {
                     0
                 } else {
                     n
@@ -213,68 +210,63 @@ impl Evaluator {
             | dice::Modifier::TargetEnum(_)
             | dice::Modifier::Fudge => 0,
         };
-        res.sort_unstable();
-        let res = match modifier {
-            dice::Modifier::KeepHigh(_) => res[res.len() - n..].to_vec(),
-            dice::Modifier::KeepLow(_) => res[..n].to_vec(),
-            dice::Modifier::DropHigh(_) => res[..res.len() - n].to_vec(),
-            dice::Modifier::DropLow(_) => res[n..].to_vec(),
+        results.sort_unstable();
+        let results = match modifier {
+            dice::Modifier::KeepHigh(_) => results[results.len() - number..].to_vec(),
+            dice::Modifier::KeepLow(_) => results[..number].to_vec(),
+            dice::Modifier::DropHigh(_) => results[..results.len() - number].to_vec(),
+            dice::Modifier::DropLow(_) => results[number..].to_vec(),
             dice::Modifier::None(_)
             | dice::Modifier::TargetDoubleFailure(_, _, _)
             | dice::Modifier::TargetEnum(_)
-            | dice::Modifier::Fudge => res,
+            | dice::Modifier::Fudge => results,
         };
-        Ok(dice::modifier::Result {
-            results: res,
-            modifier,
-        })
+        Ok(dice::modifier::Result { results, modifier })
     }
 
     fn eval_roll<S: roll::Source>(mut dice: Pairs<Rule>, source: &mut S) -> Result<kind::Single> {
-        let mut rolls = kind::Single::new();
-        let maybe_nb = dice.next().unwrap();
-        let nb = match maybe_nb.as_rule() {
+        let mut single = kind::Single::new();
+        let maybe_amount = dice.next().unwrap();
+        let amount = match maybe_amount.as_rule() {
             Rule::nb_dice => {
                 dice.next(); // skip `d` token
-                let n = maybe_nb.as_str().parse::<u64>().unwrap();
-                if n > limits::MAX_DICE_AMOUNT {
+                let amount = maybe_amount.as_str().parse::<u64>().unwrap();
+                if amount > limits::MAX_DICE_AMOUNT {
                     return Err(format!(
                         "exceeded max allowed amount of dices `{}`",
                         limits::MAX_DICE_AMOUNT
                     )
                     .into());
                 }
-                n
+                amount
             }
-            Rule::roll => 1, // no number before `d`, assume 1 dice
-            _ => unreachable!("{:?}", maybe_nb),
+            Rule::roll => 1,
+            _ => unreachable!("{:?}", maybe_amount),
         };
         let pair = dice.next().unwrap();
         let (sides, is_fudge) = match pair.as_rule() {
-            Rule::number => (pair.as_str().parse::<u64>().unwrap(), false),
+            Rule::nb_dice => (pair.as_str().parse::<u64>().unwrap(), false),
             Rule::fudge => (6, true),
             _ => unreachable!("{:?}", pair),
         };
-        if sides == 0 {
-            return Err("invalid `0` sides dice provided".into());
-        } else if sides > limits::MAX_DICE_SIDES {
+        if sides > limits::MAX_DICE_SIDES {
             return Err(format!(
                 "exceeded max allowed number of dice sides `{}`",
                 limits::MAX_DICE_SIDES
             )
             .into());
         }
-        let mut res = Self::roll(nb, sides, source);
+        let mut results = Self::roll(amount, sides, source);
         let mut modifier = dice::Modifier::None(Rule::expr);
-        let mut next_option = dice.next();
+        let mut maybe_modifier = dice.next();
         if !is_fudge {
-            if next_option.is_some() {
-                while next_option.is_some() {
-                    let option = next_option.unwrap();
-                    let opt_res =
-                        Self::eval_modifier(&mut rolls, sides, res, option, source, &modifier)?;
-                    res = opt_res.results;
-                    modifier = match opt_res.modifier {
+            if maybe_modifier.is_some() {
+                while maybe_modifier.is_some() {
+                    let pair = maybe_modifier.unwrap();
+                    let modifier_result =
+                        Self::eval_modifier(&mut single, sides, results, pair, source, &modifier)?;
+                    results = modifier_result.results;
+                    modifier = match modifier_result.modifier {
                         dice::Modifier::TargetDoubleFailure(t, f, d) => match modifier {
                             dice::Modifier::TargetDoubleFailure(ot, of, od) => {
                                 if t > 0 {
@@ -286,40 +278,40 @@ impl Evaluator {
                                 }
                             }
                             _ => {
-                                rolls.add_history(res.clone(), is_fudge);
-                                opt_res.modifier
+                                single.add_history(results.clone(), is_fudge);
+                                modifier_result.modifier
                             }
                         },
                         dice::Modifier::TargetEnum(_) => {
-                            rolls.add_history(res.clone(), is_fudge);
-                            opt_res.modifier
+                            single.add_history(results.clone(), is_fudge);
+                            modifier_result.modifier
                         }
-                        _ => opt_res.modifier,
+                        _ => modifier_result.modifier,
                     };
-                    next_option = dice.next();
+                    maybe_modifier = dice.next();
                 }
             } else {
-                rolls.add_history(res, is_fudge);
+                single.add_history(results, is_fudge);
             }
-            rolls.eval_total(modifier)?;
+            single.eval_total(modifier)?;
         } else {
-            rolls.add_history(res, is_fudge);
-            rolls.eval_total(if is_fudge {
+            single.add_history(results, is_fudge);
+            single.eval_total(if is_fudge {
                 dice::Modifier::Fudge
             } else {
                 dice::Modifier::None(Rule::expr)
             })?;
         }
-        Ok(rolls)
+        Ok(single)
     }
 
     // compute a whole roll expression
-    pub fn eval<S: roll::Source>(
+    pub(crate) fn eval<S: roll::Source>(
         expr: Pairs<Rule>,
         source: &mut S,
         is_block: bool,
     ) -> Result<kind::Single> {
-        let res = C.raise(
+        let result = C.raise(
             expr,
             |pair: Pair<Rule>| match pair.as_rule() {
                 Rule::integer => Ok(kind::Single::with_total(
@@ -343,29 +335,33 @@ impl Evaluator {
                     Rule::mul => Ok(lhs * rhs),
                     Rule::div => {
                         if rhs.is_zero() {
-                            Err("Can't divide by zero".into())
+                            Err("can't divide by zero".into())
                         } else {
                             Ok(lhs / rhs)
                         }
                     }
                     _ => unreachable!(),
                 },
-                (Err(e), _) => Err(e),
-                (_, Err(e)) => Err(e),
+                (Err(error), _) => Err(error),
+                (_, Err(error)) => Err(error),
             },
         );
-        match res {
-            Ok(mut single_roll_res) => {
+        match result {
+            Ok(mut result) => {
                 if is_block {
-                    single_roll_res.add_parens();
+                    result.add_parens();
                 }
-                Ok(single_roll_res)
+                Ok(result)
             }
-            e @ Err(_) => e,
+            error @ Err(_) => error,
         }
     }
 
-    pub fn roll<S: roll::Source>(amount: u64, sides: u64, source: &mut S) -> Vec<dice::Result> {
+    pub(crate) fn roll<S: roll::Source>(
+        amount: u64,
+        sides: u64,
+        source: &mut S,
+    ) -> Vec<dice::Result> {
         (0..amount)
             .map(|_| dice::Result::new(source.throw(sides), sides))
             .collect()

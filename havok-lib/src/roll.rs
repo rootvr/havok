@@ -17,17 +17,17 @@ pub struct Result {
 
 impl Result {
     /// New with single roll expression
-    pub fn new_single(r: kind::Single) -> Self {
+    pub fn new_single(single: kind::Single) -> Self {
         Result {
-            result: Kind::Single(r),
+            result: Kind::Single(single),
             reason: None,
         }
     }
 
     /// New with multi roll expression
-    pub fn new_multi(v: Vec<kind::Single>, total: Option<i64>) -> Self {
+    pub fn new_multi(rolls: Vec<kind::Single>, total: Option<i64>) -> Self {
         Result {
-            result: Kind::Multi(kind::Multi { rolls: v, total }),
+            result: Kind::Multi(kind::Multi { rolls, total }),
             reason: None,
         }
     }
@@ -65,7 +65,7 @@ impl std::fmt::Display for Result {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match &self.result {
             Kind::Single(single) => {
-                write!(f, "{}", single.to_string(true))?;
+                write!(f, "{}", single.to_string())?;
                 if let Some(reason) = &self.reason {
                     write!(f, " *reason* `{}`", reason)?;
                 }
@@ -83,7 +83,7 @@ impl std::fmt::Display for Result {
                 None => {
                     (*multi)
                         .iter()
-                        .try_for_each(|result| writeln!(f, "{}", result.to_string(true)))?;
+                        .try_for_each(|result| writeln!(f, "{}", result.to_string()))?;
                     if let Some(reason) = &self.reason {
                         write!(f, "*reason* `{}`", reason)?;
                     }

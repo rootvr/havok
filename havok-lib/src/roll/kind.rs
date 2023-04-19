@@ -44,12 +44,12 @@ impl Single {
     }
 
     /// New with already a total that contains a float constant
-    pub fn with_float(f: f64) -> Self {
+    pub fn with_float(float: f64) -> Self {
         Self {
-            total: f as i64,
+            total: float as i64,
             dirty: false,
-            constant: Some(f),
-            history: vec![History::Constant(constant::Constant::Float(f))],
+            constant: Some(float),
+            history: vec![History::Constant(constant::Constant::Float(float))],
         }
     }
 
@@ -77,8 +77,8 @@ impl Single {
     pub fn eval_total(&mut self, modifier: dice::Modifier) -> Result<i64> {
         if self.dirty {
             self.dirty = false;
-            let mut flat = self.history.iter().fold(Vec::new(), |mut acc, h| {
-                match h {
+            let mut values = self.history.iter().fold(Vec::new(), |mut acc, history| {
+                match history {
                     History::Roll(r) => {
                         let mut c = r.iter().map(|u| u.value as i64).collect();
                         acc.append(&mut c);
@@ -92,14 +92,14 @@ impl Single {
                 };
                 acc
             });
-            flat.sort_unstable();
-            let flat = flat;
+            values.sort_unstable();
+            let values = values;
             match modifier {
                 dice::Modifier::KeepHigh(n)
                 | dice::Modifier::KeepLow(n)
                 | dice::Modifier::DropHigh(n)
                 | dice::Modifier::DropLow(n) => {
-                    if n > flat.len() {
+                    if n > values.len() {
                         return Err("Not enough dice to keep or drop".into());
                     }
                 }
@@ -108,18 +108,18 @@ impl Single {
                 | dice::Modifier::TargetEnum(_)
                 | dice::Modifier::Fudge => (),
             }
-            let slice = match modifier {
-                dice::Modifier::KeepHigh(n) => &flat[flat.len() - n..],
-                dice::Modifier::KeepLow(n) => &flat[..n],
-                dice::Modifier::DropHigh(n) => &flat[..flat.len() - n],
-                dice::Modifier::DropLow(n) => &flat[n..],
+            let values = match modifier {
+                dice::Modifier::KeepHigh(n) => &values[values.len() - n..],
+                dice::Modifier::KeepLow(n) => &values[..n],
+                dice::Modifier::DropHigh(n) => &values[..values.len() - n],
+                dice::Modifier::DropLow(n) => &values[n..],
                 dice::Modifier::None(_)
                 | dice::Modifier::TargetDoubleFailure(_, _, _)
                 | dice::Modifier::TargetEnum(_)
-                | dice::Modifier::Fudge => flat.as_slice(),
+                | dice::Modifier::Fudge => values.as_slice(),
             };
             self.total = match modifier {
-                dice::Modifier::TargetDoubleFailure(t, f, d) => slice.iter().fold(0, |acc, &x| {
+                dice::Modifier::TargetDoubleFailure(t, f, d) => values.iter().fold(0, |acc, &x| {
                     let x = x as u64;
                     if d > 0 && x >= d {
                         acc + 2
@@ -131,14 +131,14 @@ impl Single {
                         acc
                     }
                 }),
-                dice::Modifier::TargetEnum(v) => slice.iter().fold(0, |acc, &x| {
+                dice::Modifier::TargetEnum(v) => values.iter().fold(0, |acc, &x| {
                     if v.contains(&(x as u64)) {
                         acc + 1
                     } else {
                         acc
                     }
                 }),
-                dice::Modifier::Fudge => slice.iter().fold(0, |acc, &x| {
+                dice::Modifier::Fudge => values.iter().fold(0, |acc, &x| {
                     if x <= 2 {
                         acc - 1
                     } else if x <= 4 {
@@ -147,7 +147,7 @@ impl Single {
                         acc + 1
                     }
                 }),
-                _ => slice.iter().sum::<i64>(),
+                _ => values.iter().sum::<i64>(),
             };
         }
         Ok(self.total)
@@ -175,22 +175,11 @@ impl Single {
     }
 
     /// Stringify self with(out) markdown formatting
-    pub fn to_string(&self, md: bool) -> String {
+    pub fn to_string(&self) -> String {
         if self.history.is_empty() {
-            if md {
-                format!("`{}`", self.total)
-            } else {
-                format!("{}", self.total)
-            }
+            format!("`{}`", self.total)
         } else {
-            let s = self.to_string_history();
-            format!(
-                "{1}{0}{1} = {2}{3}{2}",
-                s,
-                if md { "`" } else { "" },
-                if md { "**" } else { "" },
-                self.get_total()
-            )
+            format!("`{}` = **{}**", self.to_string_history(), self.get_total())
         }
     }
 }
@@ -277,7 +266,7 @@ impl std::ops::Div for Single {
 
 impl std::fmt::Display for Single {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.to_string(true))?;
+        write!(f, "{}", self.to_string())?;
         Ok(())
     }
 }
